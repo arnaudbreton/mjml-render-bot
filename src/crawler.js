@@ -35,7 +35,7 @@ const readGist = (gist) => {
   const promise = new Promise((resolve, reject) => {
     request(
       {
-        url: `https://api.github.com/gists/${gist.id}?access_token==${config.crawler.gist_token}&`,
+        url: `https://api.github.com/gists/${gist.id}?access_token=${config.crawler.gist_token}`,
         method: 'GET',
         headers: {
           'User-Agent': 'mjml-gist-crawler'
@@ -47,6 +47,7 @@ const readGist = (gist) => {
           reject()
         } else {
           debugLogger(`Gist ${gist.id} loaded successfully`)
+          console.log(body)
           resolve(JSON.parse(body))
         }
     })
