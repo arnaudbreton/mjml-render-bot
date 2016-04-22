@@ -1,6 +1,6 @@
 import config from './config'
 import bodyParser from 'body-parser'
-import mjmlEngine from 'mjml'
+import { mjml2html } from 'mjml'
 import express from 'express'
 
 const app = express()
@@ -15,9 +15,15 @@ const renderMJML = (mjml) => {
       return
     }
     else {
-      const html = mjmlEngine.mjml2html(mjml)
-      resolve({"html": html})
-      return
+      try {
+        console.log('ici', mjml, html)
+        const html = mjml2html(mjml)
+        resolve({"html": html})
+        return
+      }
+      catch(e) {
+        reject(e)
+      }
     }
   })
 }
@@ -37,8 +43,8 @@ app.post('/render', (req, res) => {
   })
 })
 
-app.listen(process.env.PORT || 3000, () => {
-  console.log('MJML Render Bot API on port', app.get('port'));
+const listener = app.listen(process.env.PORT || 3000, () => {
+  console.log('MJML Render Bot API on port', listener.address().port);
 })
 
 app.post('/render-send-email', (req, res) => {
@@ -63,7 +69,6 @@ app.post('/render-send-email', (req, res) => {
       'Recipients': recipientsMailjet
     }
 
-    console.log(emailData)
     const sendEmail = Mailjet.post('send')
     sendEmail
     	.request(emailData)
@@ -79,6 +84,6 @@ app.post('/render-send-email', (req, res) => {
   .catch((error) => {
     res.setHeader('Content-Type', 'application/json')
     res.status(400)
-    res.json(error)
+    res.json({"error": error})
   })
 })
