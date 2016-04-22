@@ -7,7 +7,8 @@ let config = {
   "crawler": {
     "recipient": process.env.MJML_RENDER_BOT_RECIPIENT,
     "gist_token": process.env.MJML_RENDER_BOT_GIST_TOKEN,
-    "start_date": 1454544000000
+    "start_date": 1454544000000,
+    "api_base_url": "http://mjml-render-bot.herokuapp.com"
   }
 }
 
