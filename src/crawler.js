@@ -5,13 +5,13 @@ import config from './config'
 const debugLogger = debug('mjml-gist-crawler')
 
 const readGists = (since) => {
-    debugLogger(`Gist loading...`)
-    debugLogger(`https://api.github.com/users/mjml-tryitlive/gists?access_token==${config.crawler.gist_token}&&since=${since.toISOString()}`)
+    const gistURL = `https://api.github.com/users/mjml-tryitlive/gists?access_token=${config.crawler.gist_token}&&since=${since.toISOString()}`
+    console.log(`Gists loading ${gistURL}...`)
     const promise = new Promise((resolve, reject) => {
       let gistContent = ''
       request(
         {
-          url: `https://api.github.com/users/mjml-tryitlive/gists?access_token=${config.crawler.gist_token}&since=${since.toISOString()}`,
+          url: gistURL,
           method: 'GET',
           headers: {
             'User-Agent': 'mjml-gist-crawler'
@@ -19,10 +19,13 @@ const readGists = (since) => {
         },
         (error, response, body) => {
           if (error) {
-            debugLogger(`Gist loaded with error ${error}`)
+            console.log(`Gists loaded with error ${error}`)
             reject()
           } else {
-            resolve(JSON.parse(body))
+            console.log('Gists loaded successfully')
+            const jsonBody = JSON.parse(body)
+            debugLogger(jsonBody)
+            resolve(jsonBody)
           }
       })
     })
@@ -31,7 +34,7 @@ const readGists = (since) => {
 }
 
 const readGist = (gist) => {
-  debugLogger(`Gist loading ${gist.id}...`)
+  console.log(`Gist loading ${gist.id}...`)
   const promise = new Promise((resolve, reject) => {
     request(
       {
@@ -43,11 +46,10 @@ const readGist = (gist) => {
       },
       (error, response, body) => {
         if (error) {
-          debugLogger(`Gist ${gist.id} loaded with error ${error}`)
+          console.error(`Gist ${gist.id} loaded with error ${error}`)
           reject()
         } else {
-          debugLogger(`Gist ${gist.id} loaded successfully`)
-          console.log(body)
+          console.log(`Gist ${gist.id} loaded successfully`)
           resolve(JSON.parse(body))
         }
     })
@@ -56,8 +58,9 @@ const readGist = (gist) => {
   return promise
 }
 
-const sendMJMLEmail = (content) => {
-  console.log(`Sending ${content} over email`)
+const sendMJMLEmail = (gistID, content) => {
+  console.log(`Sending ${gistID} over email`)
+  debugLogger(`Sending ${content} over email`)
   const promise = new Promise((resolve, reject) => {
     request(
       {
@@ -74,10 +77,10 @@ const sendMJMLEmail = (content) => {
       },
       (error, response, body) => {
         if (error) {
-          debugLogger(`Gist not sent`)
+          console.log(`Gist ${gistID} not sent`)
           reject()
         } else {
-          debugLogger(`Gist sent`)
+          debugLogger(`Gist ${gistID} sent`)
           resolve(body)
         }
     })
@@ -93,12 +96,12 @@ const crawl = (since) => {
       .then(gists => Promise.all(gists.map(gist => readGist(gist))))
       .then(gists => {
         Promise.all(gists.map(gist => {
-          sendMJMLEmail(gist.files.tryItLive.content)
+          sendMJMLEmail(gist.id, gist.files.tryItLive.content)
         }))
       })
       .then(() => {
         setTimeout(() => {
-          myEmitter.emit('crawl', new Date(since.getTime() + 10*60000))
+          crawlEmitter.emit('crawl', new Date(since.getTime() + 10*60000))
         }, 0.5*60000)
       })
   })
@@ -107,7 +110,7 @@ const crawl = (since) => {
 }
 
 crawl(new Date(config.crawler.start_date))
-const myEmitter = new EventEmitter();
-myEmitter.on('crawl', (since) => {
+const crawlEmitter = new EventEmitter();
+crawlEmitter.on('crawl', (since) => {
   crawl(since)
 })
