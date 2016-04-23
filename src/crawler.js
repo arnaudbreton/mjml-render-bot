@@ -4,6 +4,8 @@ import EventEmitter from 'events'
 import config from './config'
 const debugLogger = debug('mjml-gist-crawler')
 
+debugLogger('Read config', config)
+
 const readGists = (since) => {
     const gistURL = `https://api.github.com/users/mjml-tryitlive/gists?access_token=${config.crawler.gist_token}&&since=${since.toISOString()}`
     console.log(`Gists loading ${gistURL}...`)
@@ -90,6 +92,7 @@ const sendMJMLEmail = (gistID, content) => {
 }
 
 const crawl = (since) => {
+  debugLogger('Starting to crawl from', since)
   const promise = new Promise((resolve, reject) => {
     readGists(since)
       .then(gists => Promise.all(gists))
@@ -109,7 +112,7 @@ const crawl = (since) => {
   return promise
 }
 
-crawl(new Date(config.crawler.start_date))
+crawl(new Date(parseInt(config.crawler.start_date)))
 const crawlEmitter = new EventEmitter();
 crawlEmitter.on('crawl', (since) => {
   crawl(since)
