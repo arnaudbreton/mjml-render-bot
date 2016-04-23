@@ -16,7 +16,6 @@ const renderMJML = (mjml) => {
     }
     else {
       try {
-        console.log('ici', mjml, html)
         const html = mjml2html(mjml)
         resolve({"html": html})
         return
@@ -50,6 +49,7 @@ const listener = app.listen(process.env.PORT || 3000, () => {
 app.post('/render-send-email', (req, res) => {
   const mjml = req.body.mjml
   const recipients = req.body.recipients
+  const gistID = req.body.gistID
 
   if (!recipients || recipients.length === 0) {
     res.setHeader('Content-Type', 'application/json')
@@ -64,7 +64,7 @@ app.post('/render-send-email', (req, res) => {
     const emailData = {
       'FromEmail': config.mailjet.sender,
       'FromName': 'MJML Render Bot',
-      'Subject': 'Your MJML rendered',
+      'Subject': `Your MJML rendered: ${gistID}`,
       'HTML-part': html.html,
       'Recipients': recipientsMailjet
     }

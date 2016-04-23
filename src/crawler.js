@@ -70,7 +70,8 @@ const sendMJMLEmail = (gistID, content) => {
         method: 'POST',
         body: JSON.stringify({
           mjml: content,
-          recipients: [config.crawler.recipient]
+          recipients: [config.crawler.recipient],
+          gistID: gistID
         }),
         headers: {
           'User-Agent': 'mjml-gist-crawler',
