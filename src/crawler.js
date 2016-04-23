@@ -104,7 +104,7 @@ const crawl = (since) => {
       })
       .then(() => {
         setTimeout(() => {
-          crawlEmitter.emit('crawl', new Date(since.getTime() + 10*60000))
+          crawlEmitter.emit('crawl', new Date(since.getTime() + 1*60000))
         }, 0.5*60000)
       })
   })
