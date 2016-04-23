@@ -82,7 +82,7 @@ const sendMJMLEmail = (gistID, content) => {
           console.log(`Gist ${gistID} not sent`)
           reject()
         } else {
-          debugLogger(`Gist ${gistID} sent`)
+          console.log(`Gist ${gistID} sent`)
           resolve(body)
         }
     })
