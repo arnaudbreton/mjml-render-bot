@@ -2,6 +2,7 @@ import request from 'request'
 import debug from 'debug'
 import EventEmitter from 'events'
 import config from './config'
+import Redis from 'ioredis'
 const debugLogger = debug('mjml-gist-crawler')
 
 debugLogger('Read config', config)
@@ -37,22 +38,38 @@ const readGists = (since) => {
 
 const readGist = (gist) => {
   console.log(`Gist loading ${gist.id}...`)
-  const promise = new Promise((resolve, reject) => {
-    request(
-      {
-        url: `https://api.github.com/gists/${gist.id}?access_token=${config.crawler.gist_token}`,
-        method: 'GET',
-        headers: {
-          'User-Agent': 'mjml-gist-crawler'
+  const promise = new Promise((resolveRead, rejectRead) => {
+    redisClient.get(gist.id)
+    .then((lastCrawled) => {
+        if (lastCrawled) {
+          resolveRead({
+            id: gist.id,
+            ignored: true
+          })
         }
-      },
-      (error, response, body) => {
-        if (error) {
-          console.error(`Gist ${gist.id} loaded with error ${error}`)
-          reject()
-        } else {
-          console.log(`Gist ${gist.id} loaded successfully`)
-          resolve(JSON.parse(body))
+        else {
+          request(
+            {
+              url: `https://api.github.com/gists/${gist.id}?access_token=${config.crawler.gist_token}`,
+              method: 'GET',
+              headers: {
+                'User-Agent': 'mjml-gist-crawler'
+              }
+            },
+            (error, response, body) => {
+              if (error) {
+                console.error(`Gist ${gist.id} loaded with error ${error}`)
+                rejectRead()
+              } else {
+                console.log(`Gist ${gist.id} loaded successfully`)
+
+                debugLogger(`Tagging gist ${gist.id} in Redis, expiring in ${config.crawler.gist_expiration_tag} seconds`)
+                redisClient.set(gist.id, (new Date()).getTime())
+                redisClient.expire(gist.id, config.crawler.gist_expiration_tag)
+
+                resolveRead(JSON.parse(body))
+              }
+          })
         }
     })
   })
@@ -64,6 +81,8 @@ const sendMJMLEmail = (gistID, content) => {
   console.log(`Sending ${gistID} over email`)
   debugLogger(`Sending ${content} over email`)
   const promise = new Promise((resolve, reject) => {
+    resolve()
+    return
     request(
       {
         url: `${config.crawler.api_base_url}/render-send-email`,
@@ -93,28 +112,42 @@ const sendMJMLEmail = (gistID, content) => {
 }
 
 const crawl = (since) => {
-  debugLogger('Starting to crawl from', since)
+  console.log('Starting to crawl from', since)
   const promise = new Promise((resolve, reject) => {
     readGists(since)
       .then(gists => Promise.all(gists))
       .then(gists => Promise.all(gists.map(gist => readGist(gist))))
       .then(gists => {
         Promise.all(gists.map(gist => {
-          sendMJMLEmail(gist.id, gist.files.tryItLive.content)
+          if (!gist.ignored) {
+            sendMJMLEmail(gist.id, gist.files.tryItLive.content)
+          }
+          else {
+            console.log("Ignoring Gist", gist.id)
+          }
         }))
       })
       .then(() => {
+        console.log(`Crawling done for ${since}, storing last start date to Redis`)
+        redisClient.set('start_date', since.getTime())
         setTimeout(() => {
           crawlEmitter.emit('crawl', new Date(since.getTime() + 1*60000))
-        }, 0.5*60000)
+        }, 1*60000)
       })
   })
 
   return promise
 }
 
-crawl(new Date(parseInt(config.crawler.start_date)))
+debugLogger('Connecting to Redis', config.crawler.redis_url)
+const redisClient = new Redis()
 const crawlEmitter = new EventEmitter();
-crawlEmitter.on('crawl', (since) => {
-  crawl(since)
+redisClient.get('start_date').then((lastStartDate) => {
+  debugLogger('Read start_date from Redis', lastStartDate)
+  const startDate = lastStartDate || config.crawler.start_date
+
+  crawl(new Date(parseInt(startDate)))
+  crawlEmitter.on('crawl', (since) => {
+    crawl(since)
+  })
 })
