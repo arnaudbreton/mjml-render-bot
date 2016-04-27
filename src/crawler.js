@@ -81,8 +81,6 @@ const sendMJMLEmail = (gistID, content) => {
   console.log(`Sending ${gistID} over email`)
   debugLogger(`Sending ${content} over email`)
   const promise = new Promise((resolve, reject) => {
-    resolve()
-    return
     request(
       {
         url: `${config.crawler.api_base_url}/render-send-email`,
@@ -120,7 +118,12 @@ const crawl = (since) => {
       .then(gists => {
         Promise.all(gists.map(gist => {
           if (!gist.ignored) {
-            sendMJMLEmail(gist.id, gist.files.tryItLive.content)
+		if (gist.files && gist.files.tryItLive) {
+	            sendMJMLEmail(gist.id, gist.files.tryItLive.content)
+		}
+		else {
+		    console.log("No content for", gist.id)
+		}
           }
           else {
             console.log("Ignoring Gist", gist.id)
