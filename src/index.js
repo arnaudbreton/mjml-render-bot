@@ -73,10 +73,12 @@ app.post('/render-send-email', (req, res) => {
     sendEmail
     	.request(emailData)
       .on('success', () => {
+	console.log("OK sent");
         res.setHeader('Content-Type', 'application/json')
         res.json({"mjml": mjml, "html": html.html, "recipients": recipients})
       })
       .on('error', (error, response) => {
+	console.log("Error on sent", error);
         res.setHeader('Content-Type', 'application/json')
         res.json({"error": error})
       })
